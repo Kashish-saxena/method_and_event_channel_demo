@@ -20,9 +20,14 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   void initState() {
+    getData();
     super.initState();
-    getBatteryLevel();
-    getChargingStatus();
+    
+  }
+
+  getData()async{
+   await getBatteryLevel();
+   await getChargingStatus();
   }
 
   Future<void> getBatteryLevel() async {
@@ -34,21 +39,26 @@ class _MyHomePageState extends State<MyHomePage> {
     } on PlatformException catch (e) {
       log("Failed to get battery percentage: '${e.message}'.");
     } finally {
-      log("Error in fetching battery ...");
+      log("Battery Percentage Working Fine...");
     }
   }
 
-  void getChargingStatus() {
+  Future getChargingStatus() async{
     try {
       eventChannel.receiveBroadcastStream().listen((chargingStatus) {
         setState(() {
           _chargingStatus = chargingStatus;
         });
+
+        log("Success in fetching battery ...$chargingStatus");
       });
+    } on PlatformException catch (e) {
+      log("Failed to get battery status: '${e.message}'.");
     } catch (e) {
       log("Failed to get status: '$e'");
-    } finally {
-      log("Error in fetching battery ...");
+    } 
+    finally {
+      log("Battery Status Working Fine...");
     }
   }
 
