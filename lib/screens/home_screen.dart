@@ -1,32 +1,55 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key});
- static const platform = MethodChannel('samples.flutter.dev/battery');
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
- 
-  String _batteryLevel = 'Unknown battery level.';
+  static const methodChannel = MethodChannel('samples.flutter.io/battery');
+  static const eventChannel = EventChannel('samples.flutter.io/charging');
 
-  Future<void> _getBatteryLevel() async {
-    String batteryLevel;
+  int _batteryPercentage = -1;
+  String _chargingStatus = 'Unknown';
+
+  @override
+  void initState() {
+    super.initState();
+    getBatteryLevel();
+    getChargingStatus();
+  }
+
+  Future<void> getBatteryLevel() async {
     try {
-      final result =
-          await MyHomePage.platform.invokeMethod<int>('getBatteryLevel');
-      batteryLevel = 'Battery level at $result %';
+      final int result = await methodChannel.invokeMethod('getBatteryLevel');
+      setState(() {
+        _batteryPercentage = result;
+      });
     } on PlatformException catch (e) {
-      batteryLevel = "Failed to get battery level: ${e.message}";
+      log("Failed to get battery percentage: '${e.message}'.");
+    } finally {
+      log("Error in fetching battery ...");
     }
+  }
 
-    setState(() {
-      _batteryLevel = batteryLevel;
-    });
+  void getChargingStatus() {
+    try {
+      eventChannel.receiveBroadcastStream().listen((chargingStatus) {
+        setState(() {
+          _chargingStatus = chargingStatus;
+        });
+      });
+    } catch (e) {
+      log("Failed to get status: '$e'");
+    } finally {
+      log("Error in fetching battery ...");
+    }
   }
 
   @override
@@ -34,23 +57,64 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.deepPurple,
-        centerTitle: true, title: const Text("Method Channel Demo",style: TextStyle(color: Colors.white),),),
+        centerTitle: true,
+        title: const Text('Method and Event Channel',style: TextStyle(color: Colors.white),),
+      ),
       body: Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 100),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ElevatedButton(
-                onPressed: _getBatteryLevel,
-                child: const Text('Get Battery Percentage'),
-              ),
-              const SizedBox(
-                height: 50,
-              ),
-              Text(_batteryLevel),
-            ],
-          ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            Column(
+              children: [
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                  const Text(
+                  'Battery Level: ',
+                  style: TextStyle(fontSize: 20,fontWeight: FontWeight.bold),
+                ),
+                  Text(
+                  "$_batteryPercentage%",
+                  style: const TextStyle(fontSize: 20),
+                ),
+                ],),
+                const SizedBox(
+                  height: 20,
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.purpleAccent,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    backgroundColor: Colors.deepPurple),
+                  onPressed: getBatteryLevel,
+                  child: const Text("Get Battery Percentage",style: TextStyle(color: Colors.white),),
+                ),
+              ],
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'Charging Status: ',
+                  style: TextStyle(fontSize: 20,fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  _chargingStatus,
+                  style: const TextStyle(fontSize: 20),
+                ),
+                _chargingStatus == "charging"
+                    ? const Icon(
+                        Icons.battery_charging_full_outlined,
+                        color: Colors.green,
+                      )
+                    : const Icon(
+                        Icons.battery_alert,
+                        color: Colors.red,
+                      )
+              ],
+            )
+          ],
         ),
       ),
     );
